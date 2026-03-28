@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Custom Properties ──────────────────────────────────────────────── */
+:root {
+  --f1-red:   #e10600;
+  --f1-blue:  #00d2ff;
+  --nav-h:    56px;
+}
+
+/* ── Base Reset ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar (dark theme) ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d0d0f; }
+::-webkit-scrollbar-thumb { background: #2a2a2e; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3e; }
+
+/* ── AeroViz Flow Line Animation ────────────────────────────────────────── */
+@keyframes flowLine {
+  from { stroke-dashoffset: 600; }
+  to   { stroke-dashoffset: 0;   }
+}
+
+.flow-line {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: flowLine linear infinite;
+}
+
+/* ── Pressure Blob Pulse ────────────────────────────────────────────────── */
+@keyframes pulsePressure {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.75; }
+}
+
+.pressure-blob {
+  animation: pulsePressure 2.5s ease-in-out infinite;
+}
+
+/* ── Utility: no-scrollbar ──────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

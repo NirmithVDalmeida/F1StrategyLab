@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchRaceCalendar } from '../../api/calendar.js'
+import { fetchRaceCalendar, fetchSeasonWinners } from '../../api/calendar.js'
 import { CIRCUITS_2026 } from '../../data/circuits2026.js'
 import { useAppStore } from '../../store/useAppStore.js'
 import TrackCard from './TrackCard.jsx'
@@ -14,11 +14,24 @@ export default function CalendarPage() {
     queryFn: () => fetchRaceCalendar(2026),
   })
 
+  const { data: winners } = useQuery({
+    queryKey: ['winners', 2026],
+    queryFn: () => fetchSeasonWinners(2026),
+  })
+
   // Build a map from circuitId → api race data
   const apiRaceMap = {}
   if (apiRaces) {
     for (const race of apiRaces) {
       apiRaceMap[race.circuitId] = race
+    }
+  }
+
+  // Build a map from round → winning driver
+  const winnerByRound = {}
+  if (winners) {
+    for (const w of winners) {
+      winnerByRound[w.round] = w
     }
   }
 
@@ -56,6 +69,7 @@ export default function CalendarPage() {
           <TrackDetailPanel
             circuit={expandedCircuit}
             apiRace={apiRaceMap[expandedCircuit.jolpicaId]}
+            winner={winnerByRound[expandedCircuit.round]}
           />
         </div>
       )}
@@ -67,6 +81,7 @@ export default function CalendarPage() {
             key={circuit.id}
             circuit={circuit}
             apiRace={apiRaceMap[circuit.jolpicaId]}
+            winner={winnerByRound[circuit.round]}
           />
         ))}
       </div>

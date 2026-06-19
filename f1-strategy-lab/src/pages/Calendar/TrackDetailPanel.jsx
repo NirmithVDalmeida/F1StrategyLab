@@ -1,6 +1,15 @@
 import { format, parseISO, isPast, isFuture } from 'date-fns'
+import { useQuery } from '@tanstack/react-query'
 import Badge from '../../components/shared/Badge.jsx'
 import { scaleLinear } from 'd3-scale'
+import { fetchDriverCircuitHistory } from '../../api/calendar.js'
+
+// Constructor accent colours
+const TEAM_COLOR = {
+  mercedes: '#27F4D2', ferrari: '#E8002D', red_bull: '#3671C6', mclaren: '#FF8000',
+  aston_martin: '#229971', alpine: '#0093CC', williams: '#64C4FF', rb: '#6692FF',
+  sauber: '#52E252', haas: '#B6BABD',
+}
 
 const speedColor = scaleLinear()
   .domain([50, 175, 300])
@@ -15,7 +24,7 @@ const sessionStatus = (dateStr) => {
   } catch { return 'upcoming' }
 }
 
-export default function TrackDetailPanel({ circuit, apiRace }) {
+export default function TrackDetailPanel({ circuit, apiRace, winner }) {
   const { stats, schedule, corners, svgPath } = circuit
   const isCancelled = circuit.cancelled === true
 
@@ -159,6 +168,9 @@ export default function TrackDetailPanel({ circuit, apiRace }) {
         </div>
       </div>
 
+      {/* Race winner + winner's history at this circuit */}
+      {winner && <WinnerSection winner={winner} circuitId={circuit.jolpicaId} />}
+
       {/* Corner breakdown */}
       {corners.length > 0 && (
         <div>
@@ -210,6 +222,82 @@ function StatRow({ label, value }) {
     <div>
       <div className="text-gray-500 text-xs">{label}</div>
       <div className="text-gray-900 dark:text-white font-semibold">{value}</div>
+    </div>
+  )
+}
+
+function WinnerSection({ winner, circuitId }) {
+  const teamColor = TEAM_COLOR[winner.constructorId] || '#888'
+
+  const { data: history } = useQuery({
+    queryKey: ['circuitHistory', circuitId, winner.driverId],
+    queryFn: () => fetchDriverCircuitHistory(circuitId, winner.driverId),
+    enabled: !!circuitId && !!winner.driverId,
+  })
+
+  return (
+    <div className="pt-4 border-t border-gray-200 dark:border-darkBorder">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
+        Race Winner
+      </h3>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        {/* Winner identity */}
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-12 rounded-sm flex-shrink-0" style={{ background: teamColor }} />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏆</span>
+              <span className="text-lg font-bold text-gray-900 dark:text-white">
+                {winner.givenName} {winner.familyName}
+              </span>
+              {winner.driverCode && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-200 dark:bg-darkBg text-gray-500">
+                  {winner.driverCode}
+                </span>
+              )}
+            </div>
+            <div className="text-sm mt-0.5 font-semibold" style={{ color: teamColor }}>
+              {winner.constructorName}
+            </div>
+          </div>
+        </div>
+
+        {/* Race detail */}
+        <div className="flex gap-6 text-sm">
+          {winner.grid != null && <StatRow label="Started" value={`P${winner.grid}`} />}
+          {winner.time && <StatRow label="Race time" value={winner.time} />}
+          {winner.fastestLap && <StatRow label="Fastest lap" value={winner.fastestLap} />}
+          {winner.points != null && <StatRow label="Points" value={winner.points} />}
+        </div>
+      </div>
+
+      {/* Winner's all-time record at this circuit */}
+      <div className="mt-4">
+        <div className="text-xs text-gray-500 mb-2">
+          {winner.familyName}&apos;s record at this circuit
+        </div>
+        {history ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <HistoryStat label="Starts"      value={history.starts} />
+            <HistoryStat label="Wins"        value={history.wins}    accent="#f5c518" />
+            <HistoryStat label="Podiums"     value={history.podiums} accent="#cd7f32" />
+            <HistoryStat label="Best finish" value={history.bestFinish != null ? `P${history.bestFinish}` : '—'} />
+          </div>
+        ) : (
+          <div className="text-xs text-gray-500 italic">Loading career record…</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HistoryStat({ label, value, accent }) {
+  return (
+    <div className="rounded-lg bg-gray-100 dark:bg-darkBg/60 border border-gray-200 dark:border-darkBorder px-3 py-2">
+      <div className="text-gray-500 text-xs">{label}</div>
+      <div className="text-xl font-bold mt-0.5" style={{ color: accent || undefined }}>
+        {value}
+      </div>
     </div>
   )
 }

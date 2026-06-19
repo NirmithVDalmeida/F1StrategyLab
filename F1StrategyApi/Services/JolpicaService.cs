@@ -119,6 +119,45 @@ public class JolpicaService : IJolpicaService
         }
     }
 
+    public async Task<List<WinnerInfoDto>> GetSeasonWinnersAsync(int season)
+    {
+        var key = $"jolpica:winners:{season}";
+        if (_cache.TryGetValue(key, out List<WinnerInfoDto>? cached)) return cached!;
+
+        try
+        {
+            // One call returns the position-1 finisher of every completed round this season.
+            var json    = await _http.GetStringAsync($"f1/{season}/results/1.json?limit=100");
+            var winners = ParseSeasonWinners(json);
+            _cache.Set(key, winners, TimeSpan.FromMinutes(30));
+            return winners;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch season winners for {Season}", season);
+            return [];
+        }
+    }
+
+    public async Task<CircuitHistoryDto> GetDriverCircuitHistoryAsync(string circuitId, string driverId)
+    {
+        var key = $"jolpica:circuithistory:{circuitId}:{driverId}";
+        if (_cache.TryGetValue(key, out CircuitHistoryDto? cached)) return cached!;
+
+        try
+        {
+            var json    = await _http.GetStringAsync($"f1/circuits/{circuitId}/drivers/{driverId}/results.json?limit=100");
+            var history = ParseCircuitHistory(json, circuitId, driverId);
+            _cache.Set(key, history, TimeSpan.FromHours(6));
+            return history;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch circuit history for {Driver} at {Circuit}", driverId, circuitId);
+            return new CircuitHistoryDto(circuitId, driverId, 0, 0, 0, null, []);
+        }
+    }
+
     // ── Private Parsers ───────────────────────────────────────────────────────
 
     private static List<RaceDto> ParseRaces(string json)
@@ -302,5 +341,77 @@ public class JolpicaService : IJolpicaService
         }
         catch { /* return whatever was parsed */ }
         return result;
+    }
+
+    private static List<WinnerInfoDto> ParseSeasonWinners(string json)
+    {
+        var result = new List<WinnerInfoDto>();
+        try
+        {
+            var node  = JsonNode.Parse(json);
+            var races = node?["MRData"]?["RaceTable"]?["Races"]?.AsArray();
+            if (races == null) return result;
+
+            foreach (var race in races)
+            {
+                var win = race?["Results"]?.AsArray() is { Count: > 0 } rs ? rs[0] : null;
+                if (win == null) continue;
+
+                var driver = win["Driver"];
+                var ctor   = win["Constructor"];
+
+                result.Add(new WinnerInfoDto(
+                    Round:           int.TryParse(race!["round"]?.GetValue<string>(), out var rnd) ? rnd : 0,
+                    CircuitId:       race["Circuit"]?["circuitId"]?.GetValue<string>() ?? "",
+                    DriverId:        driver?["driverId"]?.GetValue<string>() ?? "",
+                    DriverCode:      driver?["code"]?.GetValue<string>() ?? "",
+                    GivenName:       driver?["givenName"]?.GetValue<string>() ?? "",
+                    FamilyName:      driver?["familyName"]?.GetValue<string>() ?? "",
+                    Nationality:     driver?["nationality"]?.GetValue<string>() ?? "",
+                    ConstructorId:   ctor?["constructorId"]?.GetValue<string>() ?? "",
+                    ConstructorName: ctor?["name"]?.GetValue<string>() ?? "",
+                    Time:            win["Time"]?["time"]?.GetValue<string>(),
+                    Grid:            int.TryParse(win["grid"]?.GetValue<string>(),   out var g)  ? g  : null,
+                    FastestLap:      win["FastestLap"]?["Time"]?["time"]?.GetValue<string>(),
+                    Points:          int.TryParse(win["points"]?.GetValue<string>(), out var pt) ? pt : null
+                ));
+            }
+        }
+        catch { /* return whatever was parsed */ }
+        return result;
+    }
+
+    private static CircuitHistoryDto ParseCircuitHistory(string json, string circuitId, string driverId)
+    {
+        var years   = new List<int>();
+        int wins = 0, podiums = 0;
+        int? best = null;
+
+        try
+        {
+            var node  = JsonNode.Parse(json);
+            var races = node?["MRData"]?["RaceTable"]?["Races"]?.AsArray();
+            if (races != null)
+            {
+                foreach (var race in races)
+                {
+                    if (race == null) continue;
+                    if (int.TryParse(race["season"]?.GetValue<string>(), out var yr)) years.Add(yr);
+
+                    var res = race["Results"]?.AsArray() is { Count: > 0 } rs ? rs[0] : null;
+                    if (res == null) continue;
+
+                    if (int.TryParse(res["position"]?.GetValue<string>(), out var pos))
+                    {
+                        if (pos == 1) wins++;
+                        if (pos <= 3) podiums++;
+                        if (best == null || pos < best) best = pos;
+                    }
+                }
+            }
+        }
+        catch { /* return whatever was parsed */ }
+
+        return new CircuitHistoryDto(circuitId, driverId, years.Count, wins, podiums, best, years);
     }
 }

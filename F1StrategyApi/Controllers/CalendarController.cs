@@ -32,4 +32,20 @@ public class CalendarController : ControllerBase
         var circuits = await _jolpica.GetCircuitsAsync(season);
         return Ok(circuits);
     }
+
+    /// <summary>Returns the winning driver of every completed round in a season.</summary>
+    [HttpGet("races/{season:int}/winners")]
+    public async Task<IActionResult> GetWinners(int season = 2026)
+    {
+        var winners = await _jolpica.GetSeasonWinnersAsync(season);
+        return Ok(winners);
+    }
+
+    /// <summary>Returns a driver's all-time record at a single circuit.</summary>
+    [HttpGet("circuits/{circuitId}/drivers/{driverId}/history")]
+    public async Task<IActionResult> GetDriverCircuitHistory(string circuitId, string driverId)
+    {
+        var history = await _jolpica.GetDriverCircuitHistoryAsync(circuitId, driverId);
+        return Ok(history);
+    }
 }

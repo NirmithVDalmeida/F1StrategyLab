@@ -11,4 +11,6 @@ public interface IJolpicaService
     Task<List<PitStopDto>>               GetPitStopsAsync(int season, int round);
     Task<List<ConstructorStandingDto>>   GetConstructorStandingsAsync(int season);
     Task<List<SessionResultDto>>         GetRaceResultsAsync(int season, int round);
+    Task<List<WinnerInfoDto>>            GetSeasonWinnersAsync(int season);
+    Task<CircuitHistoryDto>              GetDriverCircuitHistoryAsync(string circuitId, string driverId);
 }

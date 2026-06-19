@@ -490,7 +490,7 @@ function RearWing({ angle }) {
 
 function Diffuser() {
   return (
-    <group position={[0, 0.060, -1.12]}>
+    <group position={[0, 0.060, -0.96]}>
       <mesh rotation={[0.28, 0, 0]} castShadow>
         <boxGeometry args={[0.86, 0.085, 0.44]} />
         <meshStandardMaterial color={C.carbon} roughness={0.76} metalness={0.20} />

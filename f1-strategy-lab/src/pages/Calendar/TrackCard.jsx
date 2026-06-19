@@ -2,7 +2,14 @@ import { format, parseISO, isPast } from 'date-fns'
 import { useAppStore } from '../../store/useAppStore.js'
 import clsx from 'clsx'
 
-export default function TrackCard({ circuit, apiRace }) {
+// Constructor accent colours for the winner chip
+const TEAM_COLOR = {
+  mercedes: '#27F4D2', ferrari: '#E8002D', red_bull: '#3671C6', mclaren: '#FF8000',
+  aston_martin: '#229971', alpine: '#0093CC', williams: '#64C4FF', rb: '#6692FF',
+  sauber: '#52E252', haas: '#B6BABD',
+}
+
+export default function TrackCard({ circuit, apiRace, winner }) {
   const { calendarExpandedId, setCalendarExpandedId } = useAppStore()
   const isExpanded = calendarExpandedId === circuit.id
   const isCancelled = circuit.cancelled === true
@@ -107,6 +114,20 @@ export default function TrackCard({ circuit, apiRace }) {
           {formattedDate}
         </div>
       </div>
+
+      {/* Winner chip — completed races only */}
+      {!isCancelled && winner && (
+        <div className="relative z-20 flex items-center justify-center gap-1.5 mt-1 pt-2 border-t border-gray-200 dark:border-darkBorder/60">
+          <span
+            className="w-1 h-3.5 rounded-sm flex-shrink-0"
+            style={{ background: TEAM_COLOR[winner.constructorId] || '#888' }}
+          />
+          <span className="text-xs">🏆</span>
+          <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
+            {winner.driverCode || winner.familyName}
+          </span>
+        </div>
+      )}
 
       {/* Expand indicator */}
       <div className={clsx(
